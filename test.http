@@ -1,0 +1,5 @@
+POST http://localhost:8080/post
+# GET
+
+
+GET http://localhost:8080/get/d8b99f68b208b5453b391cb0c6c3d6a9824f3c3a
