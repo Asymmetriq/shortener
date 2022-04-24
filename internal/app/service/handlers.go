@@ -25,11 +25,11 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, ogURL, http.StatusTemporaryRedirect)
-	//w.Header().Set("location", ogURL)
-	//w.WriteHeader(http.StatusTemporaryRedirect)
+
 }
 
 func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
@@ -39,9 +39,8 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no request body", 400)
 		return
 	}
-	shortened := s.Storage.Set(b)
 	w.Header().Set("Content-Type", "application/text")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", r.Host, shortened)))
+	w.Write([]byte(fmt.Sprintf("http://%s/%s", r.Host, s.Storage.Set(b))))
 
 }
