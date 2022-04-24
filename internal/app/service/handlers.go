@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func (s *Service) Multiplexer(w http.ResponseWriter, r *http.Request) {
@@ -15,17 +17,18 @@ func (s *Service) Multiplexer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
+	shortID := chi.URLParam(r, "id")
+
 	if len(r.URL.Path) == 0 {
 		http.Error(w, "empty url", 400)
 		return
 	}
-	ogURL, err := s.Storage.Get(r.URL.Path[1:])
+	ogURL, err := s.Storage.Get(shortID)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
 	}
 	http.Redirect(w, r, ogURL, http.StatusTemporaryRedirect)
-
 }
 
 func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {

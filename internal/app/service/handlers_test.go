@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,130 +14,183 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestService_getHandler(t *testing.T) {
-	type want struct {
-		contentType string
-		statusCode  int
-		body        string
-		wantErr     bool
-	}
-	tests := []struct {
-		name    string
-		request *http.Request
-		want    want
-	}{
+type reqParams struct {
+	method string
+	path   string
+	value  io.Reader
+}
+
+type want struct {
+	contentType string
+	statusCode  int
+	value       string
+}
+
+type testCase struct {
+	name   string
+	params reqParams
+	want   want
+}
+
+func TestPositive_getHandler(t *testing.T) {
+	tests := []testCase{
 		{
-			name:    "test positive 1",
-			request: httptest.NewRequest(http.MethodGet, "/short-url-mock", nil),
-			want: want{
-				contentType: "text/html; charset=utf-8",
-				statusCode:  http.StatusTemporaryRedirect,
-				body:        "<a href=\"https://www.google.com\">Temporary Redirect</a>.\n\n",
+			name: "positive 1: redirect case",
+			params: reqParams{
+				method: http.MethodGet,
+				path:   "/short-url-mock",
 			},
-		},
-		{
-			name:    "test negative 1",
-			request: httptest.NewRequest(http.MethodPost, "/", strings.NewReader("wow-url")),
 			want: want{
-				contentType: "text/plain; charset=utf-8",
-				statusCode:  http.StatusBadRequest,
-				body:        fmt.Sprintf("no original url found with shortcut %q\n", "wow-url"),
-				wantErr:     true,
+				contentType: "text/html; charset=ISO-8859-1",
+				statusCode:  http.StatusOK,
+				value:       "", // тело не проверяем, так как происходит редирект
 			},
 		},
 	}
 	for _, tt := range tests {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
-		if !tt.want.wantErr {
-			repo.EXPECT().Get("short-url-mock").Return("https://www.google.com", nil)
-		} else {
-			repo.EXPECT().Get(gomock.Any()).Return("", fmt.Errorf("no original url found with shortcut %q", "wow-url"))
-		}
+		repo.EXPECT().Get("short-url-mock").Return("https://www.google.com", nil)
 
-		recoder := httptest.NewRecorder()
+		ts := httptest.NewServer(NewService(repo))
+		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Storage: repo,
-			}
-			s.getHandler(recoder, tt.request)
-			resp := recoder.Result()
-
-			defer resp.Body.Close()
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err, "error reading resp body")
-
-			require.Equal(t, tt.want.statusCode, resp.StatusCode, "status codes don't match")
-			require.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"), "content types don't match")
-			require.Equal(t, tt.want.body, string(body), "shortened urls don't match")
+			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			response.Body.Close()
 		})
 	}
 }
 
-func TestService_postHandler(t *testing.T) {
-	type want struct {
-		contentType string
-		statusCode  int
-		body        string
-		wantErr     bool
-	}
-	tests := []struct {
-		name    string
-		request *http.Request
-		want    want
-	}{
+func TestNegative_getHandler(t *testing.T) {
+	tests := []testCase{
 		{
-			name:    "test positive 1",
-			request: httptest.NewRequest(http.MethodPost, "/", strings.NewReader("https://www.google.com")),
-			want: want{
-				contentType: "application/text",
-				statusCode:  http.StatusCreated,
-				body:        "http://example.com/short-url-mock",
+			name: "negative 1: unknown short url",
+			params: reqParams{
+				method: http.MethodGet,
+				path:   "/wow-url",
 			},
-		},
-		{
-			name:    "test positive 2",
-			request: httptest.NewRequest(http.MethodPost, "/", strings.NewReader("GLKGDSL;FG;DLSKFGLSDF;GK")),
-			want: want{
-				contentType: "application/text",
-				statusCode:  http.StatusCreated,
-				body:        "http://example.com/short-url-mock",
-			},
-		},
-		{
-			name:    "test negative 1",
-			request: httptest.NewRequest(http.MethodPost, "/", strings.NewReader("")),
 			want: want{
 				contentType: "text/plain; charset=utf-8",
 				statusCode:  http.StatusBadRequest,
-				body:        "no request body\n",
-				wantErr:     true,
+				value:       fmt.Sprintf("no original url found with shortcut %q\n", "wow-url"),
 			},
 		},
 	}
 	for _, tt := range tests {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
-		if !tt.want.wantErr {
-			repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
-		}
-		recoder := httptest.NewRecorder()
+		repo.EXPECT().Get(gomock.Any()).Return("", fmt.Errorf("no original url found with shortcut %q", "wow-url"))
+
+		ts := httptest.NewServer(NewService(repo))
+		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Storage: repo,
-			}
-			s.postHandler(recoder, tt.request)
-			resp := recoder.Result()
-
-			defer resp.Body.Close()
-			body, err := io.ReadAll(resp.Body)
-			require.NoError(t, err, "error reading resp body")
-
-			require.Equal(t, tt.want.statusCode, resp.StatusCode, "status codes don't match")
-			require.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"), "content types don't match")
-			require.Equal(t, tt.want.body, string(body), "shortened urls don't match")
+			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			response.Body.Close()
 		})
 	}
+}
+
+func TestPositive_postHandler(t *testing.T) {
+	tests := []testCase{
+		{
+			name: "test positive 1",
+			params: reqParams{
+				method: http.MethodPost,
+				path:   "/",
+				value:  strings.NewReader("https://www.google.com"),
+			},
+			want: want{
+				contentType: "application/text",
+				statusCode:  http.StatusCreated,
+				value:       "/short-url-mock",
+			},
+		},
+		{
+			name: "test positive 2",
+			params: reqParams{
+				method: http.MethodPost,
+				path:   "/",
+				value:  strings.NewReader("FKLSDFKLSDFKLSDFKSD"),
+			},
+			want: want{
+				contentType: "application/text",
+				statusCode:  http.StatusCreated,
+				value:       "/short-url-mock",
+			},
+		},
+	}
+	for _, tt := range tests {
+		ctrl := gomock.NewController(t)
+		repo := mock.NewMockRepository(ctrl)
+		repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
+
+		ts := httptest.NewServer(NewService(repo))
+		defer ts.Close()
+
+		tt.want.value = ts.URL + tt.want.value
+		t.Run(tt.name, func(t *testing.T) {
+			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			response.Body.Close()
+		})
+	}
+}
+
+func TestNegative_postHandler(t *testing.T) {
+	tests := []testCase{
+		{
+			name: "test negative 1",
+			params: reqParams{
+				method: http.MethodPost,
+				path:   "/",
+				value:  strings.NewReader(""),
+			},
+			want: want{
+				contentType: "text/plain; charset=utf-8",
+				statusCode:  http.StatusBadRequest,
+				value:       "no request body\n",
+			},
+		},
+	}
+	for _, tt := range tests {
+		ctrl := gomock.NewController(t)
+		repo := mock.NewMockRepository(ctrl)
+
+		ts := httptest.NewServer(NewService(repo))
+		defer ts.Close()
+
+		t.Run(tt.name, func(t *testing.T) {
+			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			response.Body.Close()
+		})
+	}
+}
+
+func testRequest(t *testing.T, serverURL string, method, path string, value io.Reader) (*http.Response, string) {
+	req, err := http.NewRequest(method, serverURL+path, value)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	return resp, string(respBody)
+}
+
+func checkResults(t *testing.T, tt testCase, code int, value, contentType string) {
+	require.Equal(t, tt.want.statusCode, code, "status codes don't match")
+	require.Equal(t, tt.want.contentType, contentType)
+	if tt.want.value != "" {
+		require.Equal(t, tt.want.value, value, "shortened urls don't match")
+	}
+
 }
