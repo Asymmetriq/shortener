@@ -9,11 +9,12 @@ import (
 )
 
 func (s *Service) Multiplexer(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
 		s.getHandler(w, r)
-		return
+	case http.MethodPost:
+		s.postHandler(w, r)
 	}
-	s.postHandler(w, r)
 }
 
 func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {

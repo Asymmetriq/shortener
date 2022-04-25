@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
+
+	"github.com/Asymmetriq/shortener/internal/app/shorten"
 )
 
 func NewRepository() *inMemoryRepository {
@@ -17,9 +17,7 @@ type inMemoryRepository struct {
 }
 
 func (imr *inMemoryRepository) Set(url []byte) string {
-	h := sha1.New()
-	h.Write(url)
-	shortURL := hex.EncodeToString(h.Sum(nil))
+	shortURL := shorten.Shorten(url)
 	imr.storage[shortURL] = string(url)
 	return shortURL
 }
