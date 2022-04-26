@@ -7,13 +7,13 @@ import (
 )
 
 // Shorten is a function for short URL creation
-func Shorten(originalURL []byte) string {
+func Shorten(originalURL string) string {
 	return encodeToBase58(hashURL(originalURL))
 }
 
-func hashURL(originalURL []byte) []byte {
+func hashURL(originalURL string) []byte {
 	h := sha256.New()
-	h.Write(originalURL)
+	h.Write([]byte(originalURL))
 	return h.Sum(nil)
 }
 

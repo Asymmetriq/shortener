@@ -16,9 +16,9 @@ type inMemoryRepository struct {
 	storage map[string]string
 }
 
-func (imr *inMemoryRepository) Set(url []byte) string {
+func (imr *inMemoryRepository) Set(url string) string {
 	shortURL := shorten.Shorten(url)
-	imr.storage[shortURL] = string(url)
+	imr.storage[shortURL] = url
 	return shortURL
 }
 

@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	service := service.NewService(repo.NewRepository())
 	http.ListenAndServe(":8080", service)
 }

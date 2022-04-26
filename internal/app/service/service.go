@@ -6,7 +6,7 @@ import (
 )
 
 type Repository interface {
-	Set(url []byte) string
+	Set(url string) string
 	Get(id string) (string, error)
 }
 
@@ -25,7 +25,6 @@ func NewService(repo Repository) *Service {
 		s.Get("/{id}", s.getHandler)
 	})
 	return s
-
 }
 
 type Service struct {

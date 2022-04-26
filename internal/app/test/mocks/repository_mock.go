@@ -49,7 +49,7 @@ func (mr *MockRepositoryMockRecorder) Get(id interface{}) *gomock.Call {
 }
 
 // Set mocks base method.
-func (m *MockRepository) Set(url []byte) string {
+func (m *MockRepository) Set(url string) string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", url)
 	ret0, _ := ret[0].(string)
