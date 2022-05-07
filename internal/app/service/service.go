@@ -20,10 +20,19 @@ func NewService(repo Repository) *Service {
 		middleware.RealIP,
 		middleware.Logger,
 	)
+
 	s.Route("/", func(r chi.Router) {
 		s.Post("/", s.postHandler)
 		s.Get("/{id}", s.getHandler)
+
+		s.Post("/api/shorten", s.jsonHandler)
+
+		// Так не работает? Почему?
+		// s.Route("/api", func(r chi.Router) {
+		// 	s.Post("/shorten", s.jsonHandler)
+		// })
 	})
+
 	return s
 }
 

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -171,6 +173,58 @@ func TestNegative_postHandler(t *testing.T) {
 	}
 }
 
+func TestPositive_jsonHandler(t *testing.T) {
+	tests := []testCase{
+		{
+			name: "test positive 1",
+			params: reqParams{
+				method: http.MethodPost,
+				path:   "/api/shorten",
+				value:  newJsonBody("https://www.google.com"),
+			},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusCreated,
+				value:       "/short-url-mock",
+			},
+		},
+		{
+			name: "test positive 2",
+			params: reqParams{
+				method: http.MethodPost,
+				path:   "/api/shorten",
+				value:  newJsonBody("FKLSDFKLSDFKLSDFKSD"),
+			},
+			want: want{
+				contentType: "application/json",
+				statusCode:  http.StatusCreated,
+				value:       "/short-url-mock",
+			},
+		},
+	}
+	for _, tt := range tests {
+		ctrl := gomock.NewController(t)
+		repo := mock.NewMockRepository(ctrl)
+		repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
+
+		ts := httptest.NewServer(NewService(repo))
+		defer ts.Close()
+
+		m, err := json.Marshal(struct {
+			Result string `json:"result"`
+		}{Result: (ts.URL + tt.want.value)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		tt.want.value = string(m)
+		t.Run(tt.name, func(t *testing.T) {
+			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			response.Body.Close()
+		})
+	}
+}
+
 func testRequest(t *testing.T, serverURL string, method, path string, value io.Reader) (*http.Response, string) {
 	req, err := http.NewRequest(method, serverURL+path, value)
 	require.NoError(t, err)
@@ -193,4 +247,11 @@ func checkResults(t *testing.T, tt testCase, code int, value, contentType string
 		require.Equal(t, tt.want.value, value, "shortened urls don't match")
 	}
 
+}
+
+func newJsonBody(url string) io.Reader {
+	result, _ := json.Marshal(struct {
+		URL string `json:"url"`
+	}{URL: url})
+	return bytes.NewBuffer(result)
 }
