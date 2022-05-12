@@ -1,6 +1,7 @@
-package service
+package shortener
 
 import (
+	"github.com/Asymmetriq/shortener/internal/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -10,27 +11,25 @@ type Repository interface {
 	Get(id string) (string, error)
 }
 
-func NewService(repo Repository) *Service {
+func NewShortener(repo Repository, cfg config.Config) *Service {
 	s := &Service{
-		Storage: repo,
 		Mux:     chi.NewMux(),
+		Storage: repo,
+		Config:  cfg,
 	}
+
 	s.Use(
 		middleware.Recoverer,
 		middleware.RealIP,
 		middleware.Logger,
 	)
-
 	s.Route("/", func(r chi.Router) {
 		s.Post("/", s.postHandler)
 		s.Get("/{id}", s.getHandler)
 
-		s.Post("/api/shorten", s.jsonHandler)
-
-		// Так не работает? Почему?
-		// s.Route("/api", func(r chi.Router) {
-		// 	s.Post("/shorten", s.jsonHandler)
-		// })
+		r.Route("/api", func(r chi.Router) {
+			r.Post("/shorten", s.jsonHandler)
+		})
 	})
 
 	return s
@@ -39,4 +38,5 @@ func NewService(repo Repository) *Service {
 type Service struct {
 	*chi.Mux
 	Storage Repository
+	Config  config.Config
 }

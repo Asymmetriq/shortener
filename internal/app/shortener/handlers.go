@@ -1,4 +1,4 @@
-package service
+package shortener
 
 import (
 	"encoding/json"
@@ -32,11 +32,14 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no request body", http.StatusBadRequest)
 		return
 	}
-	shortURL := s.Storage.Set(string(b))
+	baseURL := r.Host
+	if u := s.Config.GetBaseURL(); len(u) != 0 {
+		baseURL = u
+	}
 
 	w.Header().Set("Content-Type", "application/text")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(fmt.Sprintf("http://%s/%s", r.Host, shortURL)))
+	w.Write([]byte(s.getShortenedURL(baseURL, string(b))))
 }
 
 func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,10 +52,16 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL := s.Storage.Set(string(result.URL))
+	baseURL := r.Host
+	if u := s.Config.GetBaseURL(); len(u) != 0 {
+		baseURL = u
+	}
+
 	resp, err := json.Marshal(struct {
 		Result string `json:"result"`
-	}{Result: fmt.Sprintf("http://%s/%s", r.Host, shortURL)})
+	}{
+		Result: s.getShortenedURL(baseURL, result.URL),
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -61,4 +70,9 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(resp)
+}
+
+func (s *Service) getShortenedURL(baseURL, originalURL string) string {
+	shortURL := s.Storage.Set(originalURL)
+	return fmt.Sprintf("http://%s/%s", baseURL, shortURL)
 }

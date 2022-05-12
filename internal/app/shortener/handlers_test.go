@@ -1,4 +1,4 @@
-package service
+package shortener
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	mock "github.com/Asymmetriq/shortener/internal/app/test/mocks"
+	"github.com/Asymmetriq/shortener/internal/config"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
@@ -54,7 +55,7 @@ func TestPositive_getHandler(t *testing.T) {
 		repo := mock.NewMockRepository(ctrl)
 		repo.EXPECT().Get("short-url-mock").Return("https://www.google.com", nil)
 
-		ts := httptest.NewServer(NewService(repo))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -85,7 +86,7 @@ func TestNegative_getHandler(t *testing.T) {
 		repo := mock.NewMockRepository(ctrl)
 		repo.EXPECT().Get(gomock.Any()).Return("", fmt.Errorf("no original url found with shortcut %q", "wow-url"))
 
-		ts := httptest.NewServer(NewService(repo))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,7 +131,7 @@ func TestPositive_postHandler(t *testing.T) {
 		repo := mock.NewMockRepository(ctrl)
 		repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
 
-		ts := httptest.NewServer(NewService(repo))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		tt.want.value = ts.URL + tt.want.value
@@ -162,7 +163,7 @@ func TestNegative_postHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
 
-		ts := httptest.NewServer(NewService(repo))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -180,7 +181,7 @@ func TestPositive_jsonHandler(t *testing.T) {
 			params: reqParams{
 				method: http.MethodPost,
 				path:   "/api/shorten",
-				value:  newJsonBody("https://www.google.com"),
+				value:  newJSONBody("https://www.google.com"),
 			},
 			want: want{
 				contentType: "application/json",
@@ -193,7 +194,7 @@ func TestPositive_jsonHandler(t *testing.T) {
 			params: reqParams{
 				method: http.MethodPost,
 				path:   "/api/shorten",
-				value:  newJsonBody("FKLSDFKLSDFKLSDFKSD"),
+				value:  newJSONBody("FKLSDFKLSDFKLSDFKSD"),
 			},
 			want: want{
 				contentType: "application/json",
@@ -207,7 +208,7 @@ func TestPositive_jsonHandler(t *testing.T) {
 		repo := mock.NewMockRepository(ctrl)
 		repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
 
-		ts := httptest.NewServer(NewService(repo))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		m, err := json.Marshal(struct {
@@ -249,7 +250,7 @@ func checkResults(t *testing.T, tt testCase, code int, value, contentType string
 
 }
 
-func newJsonBody(url string) io.Reader {
+func newJSONBody(url string) io.Reader {
 	result, _ := json.Marshal(struct {
 		URL string `json:"url"`
 	}{URL: url})

@@ -4,10 +4,14 @@ import (
 	"net/http"
 
 	repo "github.com/Asymmetriq/shortener/internal/app/repository"
-	"github.com/Asymmetriq/shortener/internal/app/service"
+	"github.com/Asymmetriq/shortener/internal/app/shortener"
+	"github.com/Asymmetriq/shortener/internal/config"
 )
 
 func main() {
-	service := service.NewService(repo.NewRepository())
-	http.ListenAndServe(":8080", service)
+	service := shortener.NewShortener(
+		repo.NewRepository(),
+		config.InitConfig(),
+	)
+	http.ListenAndServe(service.Config.GetAddress(), service)
 }
