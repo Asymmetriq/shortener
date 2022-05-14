@@ -1,12 +1,12 @@
-package repository
+package repositories
 
 import (
 	"fmt"
 
-	"github.com/Asymmetriq/shortener/internal/app/shorten"
+	"github.com/Asymmetriq/shortener/internal/shorten"
 )
 
-func NewRepository() *inMemoryRepository {
+func newInMemoryRepository() *inMemoryRepository {
 	return &inMemoryRepository{
 		storage: make(map[string]string),
 	}
@@ -27,4 +27,8 @@ func (imr *inMemoryRepository) Get(id string) (string, error) {
 		return ogURL, nil
 	}
 	return "", fmt.Errorf("no original url found with shortcut %q", id)
+}
+
+func (imr *inMemoryRepository) Close() error {
+	return nil
 }

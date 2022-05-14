@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	mock "github.com/Asymmetriq/shortener/internal/app/test/mocks"
 	"github.com/Asymmetriq/shortener/internal/config"
+	mock "github.com/Asymmetriq/shortener/internal/test/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )

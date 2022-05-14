@@ -9,11 +9,13 @@ import (
 type Config interface {
 	GetAddress() string
 	GetBaseURL() string
+	GetStoragePath() string
 }
 
 type config struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	ServerBaseURL string `env:"SERVER_BASE_URL"`
+	ServerAddress   string `env:"SERVER_ADDRESS"`
+	ServerBaseURL   string `env:"SERVER_BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func (c *config) GetAddress() string {
@@ -25,6 +27,10 @@ func (c *config) GetAddress() string {
 
 func (c *config) GetBaseURL() string {
 	return c.ServerBaseURL
+}
+
+func (c *config) GetStoragePath() string {
+	return c.FileStoragePath
 }
 
 func InitConfig() Config {

@@ -2,16 +2,12 @@ package shortener
 
 import (
 	"github.com/Asymmetriq/shortener/internal/config"
+	r "github.com/Asymmetriq/shortener/internal/repositories"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-type Repository interface {
-	Set(url string) string
-	Get(id string) (string, error)
-}
-
-func NewShortener(repo Repository, cfg config.Config) *Service {
+func NewShortener(repo r.Repository, cfg config.Config) *Service {
 	s := &Service{
 		Mux:     chi.NewMux(),
 		Storage: repo,
@@ -37,6 +33,6 @@ func NewShortener(repo Repository, cfg config.Config) *Service {
 
 type Service struct {
 	*chi.Mux
-	Storage Repository
+	Storage r.Repository
 	Config  config.Config
 }
