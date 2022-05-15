@@ -10,6 +10,7 @@ import (
 
 func main() {
 	cfg := config.InitConfig()
+
 	repo := repositories.NewRepository(cfg.GetStoragePath())
 	defer repo.Close()
 

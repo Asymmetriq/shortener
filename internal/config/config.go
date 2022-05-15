@@ -1,10 +1,23 @@
 package config
 
 import (
+	"flag"
 	"log"
 
 	"github.com/caarlos0/env/v6"
 )
+
+var (
+	address     *string
+	baseURL     *string
+	storagepath *string
+)
+
+func init() {
+	address = flag.String("a", ":8080", "Server's host address")
+	baseURL = flag.String("b", "", "Server's base URL")
+	storagepath = flag.String("f", "", "Storage path")
+}
 
 type Config interface {
 	GetAddress() string
@@ -19,9 +32,6 @@ type config struct {
 }
 
 func (c *config) GetAddress() string {
-	if len(c.ServerAddress) == 0 {
-		return ":8080"
-	}
 	return c.ServerAddress
 }
 
@@ -34,10 +44,28 @@ func (c *config) GetStoragePath() string {
 }
 
 func InitConfig() Config {
-	var conf config
-	err := env.Parse(&conf)
+	flag.Parse()
+	conf := &config{
+		ServerAddress:   *address,
+		ServerBaseURL:   *baseURL,
+		FileStoragePath: *storagepath,
+	}
+	err := env.Parse(conf)
 	if err != nil {
 		log.Fatalf("missing required env vars: %v", err)
 	}
-	return &conf
+	conf.initWithFlags()
+	return conf
+}
+
+func (c *config) initWithFlags() {
+	if len(c.ServerAddress) == 0 {
+		c.ServerAddress = *address
+	}
+	if len(c.ServerBaseURL) == 0 {
+		c.ServerBaseURL = *baseURL
+	}
+	if len(c.FileStoragePath) == 0 {
+		c.FileStoragePath = *storagepath
+	}
 }
