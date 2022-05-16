@@ -1,4 +1,4 @@
-package repositories
+package repository
 
 import (
 	"bufio"
@@ -13,6 +13,12 @@ import (
 type dataJSON struct {
 	OriginalURL string
 	ShortURL    string
+}
+
+type fileRepostitory struct {
+	file    *os.File
+	encoder *json.Encoder
+	storage map[string]string
 }
 
 func newFileRepository(filename string) *fileRepostitory {
@@ -30,12 +36,6 @@ func newFileRepository(filename string) *fileRepostitory {
 		encoder: json.NewEncoder(f),
 		storage: data,
 	}
-}
-
-type fileRepostitory struct {
-	file    *os.File
-	encoder *json.Encoder
-	storage map[string]string
 }
 
 func (fr *fileRepostitory) Set(url string) string {

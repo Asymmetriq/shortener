@@ -7,17 +7,17 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
-var (
-	address     *string
-	baseURL     *string
-	storagepath *string
-)
-
 func init() {
-	address = flag.String("a", ":8080", "Server's host address")
-	baseURL = flag.String("b", "", "Server's base URL")
-	storagepath = flag.String("f", "", "Storage path")
+	flag.StringVar(&_address, "a", ":8080", "Server's host address")
+	flag.StringVar(&_baseURL, "b", "", "Server's base URL")
+	flag.StringVar(&_storagepath, "f", "", "Storage path")
 }
+
+var (
+	_address     string
+	_baseURL     string
+	_storagepath string
+)
 
 type Config interface {
 	GetAddress() string
@@ -46,9 +46,9 @@ func (c *config) GetStoragePath() string {
 func InitConfig() Config {
 	flag.Parse()
 	conf := &config{
-		ServerAddress:   *address,
-		ServerBaseURL:   *baseURL,
-		FileStoragePath: *storagepath,
+		ServerAddress:   _address,
+		ServerBaseURL:   _baseURL,
+		FileStoragePath: _storagepath,
 	}
 	err := env.Parse(conf)
 	if err != nil {
@@ -60,12 +60,12 @@ func InitConfig() Config {
 
 func (c *config) initWithFlags() {
 	if len(c.ServerAddress) == 0 {
-		c.ServerAddress = *address
+		c.ServerAddress = _address
 	}
 	if len(c.ServerBaseURL) == 0 {
-		c.ServerBaseURL = *baseURL
+		c.ServerBaseURL = _baseURL
 	}
 	if len(c.FileStoragePath) == 0 {
-		c.FileStoragePath = *storagepath
+		c.FileStoragePath = _storagepath
 	}
 }
