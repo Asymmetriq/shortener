@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg := config.InitConfig()
 
-	repo := repository.NewRepository(cfg.GetStoragePath())
+	repo := repository.NewRepository(cfg)
 	defer repo.Close()
 
 	service := shortener.NewShortener(repo, cfg)

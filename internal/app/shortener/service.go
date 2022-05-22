@@ -18,7 +18,9 @@ func NewShortener(repo r.Repository, cfg config.Config) *Service {
 		middleware.Recoverer,
 		middleware.RealIP,
 		middleware.Logger,
-		gzipHandle,
+
+		gzipMiddleware,
+		cookieMiddleware,
 	)
 	s.Route("/", func(r chi.Router) {
 		s.Post("/", s.postHandler)
@@ -26,6 +28,10 @@ func NewShortener(repo r.Repository, cfg config.Config) *Service {
 
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", s.jsonHandler)
+
+			r.Route("/user", func(r chi.Router) {
+				r.Get("/urls", s.userURLsHandler)
+			})
 		})
 	})
 

@@ -5,4 +5,4 @@ t:
 	go test ./...
 
 mocks:
-	mockgen -source=internal/repositories/repository.go Repository > internal/test/mocks/repository_mock.go
+	mockgen -source=internal/repository/interface.go Repository > internal/test/mocks/repository_mock.go

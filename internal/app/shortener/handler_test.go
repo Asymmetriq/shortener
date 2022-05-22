@@ -12,9 +12,15 @@ import (
 	"testing"
 
 	"github.com/Asymmetriq/shortener/internal/config"
+	"github.com/Asymmetriq/shortener/internal/cookie"
 	mock "github.com/Asymmetriq/shortener/internal/test/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	defaultUserID, _ = cookie.GetSignedUserID()
+	defaultShortURL  = "/short-url-mock"
 )
 
 type reqParams struct {
@@ -41,7 +47,7 @@ func TestPositive_getHandler(t *testing.T) {
 			name: "positive 1: redirect case",
 			params: reqParams{
 				method: http.MethodGet,
-				path:   "/short-url-mock",
+				path:   defaultShortURL,
 			},
 			want: want{
 				contentType: "text/html; charset=ISO-8859-1",
@@ -53,14 +59,15 @@ func TestPositive_getHandler(t *testing.T) {
 	for _, tt := range tests {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
-		repo.EXPECT().Get("short-url-mock").Return("https://www.google.com", nil)
+
+		repo.EXPECT().GetURL("short-url-mock").Return("https://www.google.com", nil)
 
 		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
-			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			checkResults(t, tt, response.StatusCode, ts.URL+respBody, response.Header.Get("Content-Type"))
 			response.Body.Close()
 		})
 	}
@@ -84,7 +91,8 @@ func TestNegative_getHandler(t *testing.T) {
 	for _, tt := range tests {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
-		repo.EXPECT().Get(gomock.Any()).Return("", fmt.Errorf("no original url found with shortcut %q", "wow-url"))
+
+		repo.EXPECT().GetURL(gomock.Any()).Return("", fmt.Errorf("no original url found with shortcut %q", "wow-url"))
 
 		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
@@ -109,7 +117,7 @@ func TestPositive_postHandler(t *testing.T) {
 			want: want{
 				contentType: "application/text",
 				statusCode:  http.StatusCreated,
-				value:       "/short-url-mock",
+				value:       "short-url-mock",
 			},
 		},
 		{
@@ -122,19 +130,18 @@ func TestPositive_postHandler(t *testing.T) {
 			want: want{
 				contentType: "application/text",
 				statusCode:  http.StatusCreated,
-				value:       "/short-url-mock",
+				value:       "short-url-mock",
 			},
 		},
 	}
 	for _, tt := range tests {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
-		repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
+		repo.EXPECT().SetURL(gomock.Any(), gomock.Any(), gomock.Any()).Return("short-url-mock")
 
 		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
-		tt.want.value = ts.URL + tt.want.value
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
 			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
@@ -206,14 +213,14 @@ func TestPositive_jsonHandler(t *testing.T) {
 	for _, tt := range tests {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
-		repo.EXPECT().Set(gomock.Any()).Return("short-url-mock")
+		repo.EXPECT().SetURL(gomock.Any(), gomock.Any(), gomock.Any()).Return("/short-url-mock")
 
 		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
 		defer ts.Close()
 
 		m, err := json.Marshal(struct {
 			Result string `json:"result"`
-		}{Result: (ts.URL + tt.want.value)})
+		}{Result: (tt.want.value)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -229,6 +236,11 @@ func TestPositive_jsonHandler(t *testing.T) {
 func testRequest(t *testing.T, serverURL string, method, path string, value io.Reader) (*http.Response, string) {
 	req, err := http.NewRequest(method, serverURL+path, value)
 	require.NoError(t, err)
+
+	req.AddCookie(&http.Cookie{
+		Name:  string(cookie.Name),
+		Value: defaultUserID,
+	})
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
