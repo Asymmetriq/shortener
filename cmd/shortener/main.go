@@ -5,7 +5,9 @@ import (
 
 	"github.com/Asymmetriq/shortener/internal/app/shortener"
 	"github.com/Asymmetriq/shortener/internal/config"
+	"github.com/Asymmetriq/shortener/internal/db"
 	"github.com/Asymmetriq/shortener/internal/repository"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func main() {
@@ -14,6 +16,9 @@ func main() {
 	repo := repository.NewRepository(cfg)
 	defer repo.Close()
 
-	service := shortener.NewShortener(repo, cfg)
+	con := db.ConnectToPostgres("pgx", cfg.GetDatabaseDSN())
+	defer con.Close()
+
+	service := shortener.NewShortener(repo, cfg, con)
 	http.ListenAndServe(service.Config.GetAddress(), service)
 }

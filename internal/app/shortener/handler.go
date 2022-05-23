@@ -38,10 +38,14 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no request body", http.StatusBadRequest)
 		return
 	}
+	host := r.Host
+	if u := s.Config.GetBaseURL(); len(u) != 0 {
+		host = u
+	}
 
 	w.Header().Set("Content-Type", "application/text")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(s.Storage.SetURL(string(b), userID, r.Host)))
+	w.Write([]byte(s.Storage.SetURL(string(b), userID, host)))
 }
 
 func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
@@ -58,11 +62,15 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	host := r.Host
+	if u := s.Config.GetBaseURL(); len(u) != 0 {
+		host = u
+	}
 
 	resp, err := json.Marshal(struct {
 		Result string `json:"result"`
 	}{
-		Result: s.Storage.SetURL(result.URL, userID, r.Host),
+		Result: s.Storage.SetURL(result.URL, userID, host),
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -72,6 +80,15 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(resp)
+}
+
+func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
+	err := s.DB.PingContext(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Service) userURLsHandler(w http.ResponseWriter, r *http.Request) {

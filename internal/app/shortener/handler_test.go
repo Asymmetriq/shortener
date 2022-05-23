@@ -2,6 +2,7 @@ package shortener
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -62,7 +63,7 @@ func TestPositive_getHandler(t *testing.T) {
 
 		repo.EXPECT().GetURL("short-url-mock").Return("https://www.google.com", nil)
 
-		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig(), &sql.DB{}))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -94,7 +95,7 @@ func TestNegative_getHandler(t *testing.T) {
 
 		repo.EXPECT().GetURL(gomock.Any()).Return("", fmt.Errorf("no original url found with shortcut %q", "wow-url"))
 
-		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig(), &sql.DB{}))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -139,7 +140,7 @@ func TestPositive_postHandler(t *testing.T) {
 		repo := mock.NewMockRepository(ctrl)
 		repo.EXPECT().SetURL(gomock.Any(), gomock.Any(), gomock.Any()).Return("short-url-mock")
 
-		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig(), &sql.DB{}))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -170,7 +171,7 @@ func TestNegative_postHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		repo := mock.NewMockRepository(ctrl)
 
-		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig(), &sql.DB{}))
 		defer ts.Close()
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,7 +216,7 @@ func TestPositive_jsonHandler(t *testing.T) {
 		repo := mock.NewMockRepository(ctrl)
 		repo.EXPECT().SetURL(gomock.Any(), gomock.Any(), gomock.Any()).Return("/short-url-mock")
 
-		ts := httptest.NewServer(NewShortener(repo, config.InitConfig()))
+		ts := httptest.NewServer(NewShortener(repo, config.InitConfig(), &sql.DB{}))
 		defer ts.Close()
 
 		m, err := json.Marshal(struct {
