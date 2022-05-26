@@ -12,7 +12,7 @@ import (
 func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	shortID := chi.URLParam(r, "id")
 
-	ogURL, err := s.Storage.GetURL(shortID)
+	ogURL, err := s.Storage.GetURL(r.Context(), shortID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -42,10 +42,15 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 	if u := s.Config.GetBaseURL(); len(u) != 0 {
 		host = u
 	}
+	res, err := s.Storage.SetURL(r.Context(), string(b), userID, host)
+	if err != nil {
+		http.Error(w, "no request body", http.StatusBadRequest)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/text")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(s.Storage.SetURL(string(b), userID, host)))
+	w.Write([]byte(res))
 }
 
 func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
@@ -66,11 +71,15 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	if u := s.Config.GetBaseURL(); len(u) != 0 {
 		host = u
 	}
-
+	res, err := s.Storage.SetURL(r.Context(), result.URL, userID, host)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	resp, err := json.Marshal(struct {
 		Result string `json:"result"`
 	}{
-		Result: s.Storage.SetURL(result.URL, userID, host),
+		Result: res,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -83,7 +92,7 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
-	err := s.DB.PingContext(r.Context())
+	err := s.Storage.PingContext(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -98,7 +107,7 @@ func (s *Service) userURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urls, err := s.Storage.GetAllURLs(userID)
+	urls, err := s.Storage.GetAllURLs(r.Context(), userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNoContent)
 		return

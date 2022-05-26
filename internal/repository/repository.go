@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -8,13 +10,17 @@ import (
 )
 
 type Repository interface {
-	SetURL(url, userID, host string) string
-	GetURL(id string) (string, error)
-	GetAllURLs(userID string) ([]Data, error)
+	SetURL(ctx context.Context, url, userID, host string) (string, error)
+	GetURL(ctx context.Context, id string) (string, error)
+	GetAllURLs(ctx context.Context, userID string) ([]Data, error)
 	Close() error
+	PingContext(ctx context.Context) error
 }
 
-func NewRepository(cfg config.Config) Repository {
+func NewRepository(cfg config.Config, db *sql.DB) Repository {
+	if db != nil {
+		return newDBRepository(db)
+	}
 	if filepath := cfg.GetStoragePath(); len(filepath) != 0 {
 		return newFileRepository(filepath, cfg.GetBaseURL())
 	}

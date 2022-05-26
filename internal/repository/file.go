@@ -2,6 +2,7 @@ package repository
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -39,7 +40,7 @@ func newFileRepository(filename, host string) *fileRepostitory {
 	}
 }
 
-func (fr *fileRepostitory) SetURL(url, userID, host string) string {
+func (fr *fileRepostitory) SetURL(ctx context.Context, url, userID, host string) (string, error) {
 	id := shorten.Shorten(url)
 	shortURL := buildURL(host, id)
 
@@ -56,17 +57,17 @@ func (fr *fileRepostitory) SetURL(url, userID, host string) string {
 		userID:      userID,
 	}
 
-	return shortURL
+	return shortURL, nil
 }
 
-func (fr *fileRepostitory) GetURL(id string) (string, error) {
+func (fr *fileRepostitory) GetURL(ctx context.Context, id string) (string, error) {
 	if ogURL, ok := fr.storage[id]; ok {
 		return ogURL.OriginalURL, nil
 	}
 	return "", fmt.Errorf("no original url found with shortcut %q", id)
 }
 
-func (fr *fileRepostitory) GetAllURLs(userID string) ([]Data, error) {
+func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]Data, error) {
 	data := make([]Data, 0)
 	for _, v := range fr.storage {
 		if v.userID == userID {
@@ -78,6 +79,10 @@ func (fr *fileRepostitory) GetAllURLs(userID string) ([]Data, error) {
 
 func (fr *fileRepostitory) Close() error {
 	return fr.file.Close()
+}
+
+func (fr *fileRepostitory) PingContext(ctx context.Context) error {
+	return nil
 }
 
 func restoreData(file *os.File, host string) (map[string]Data, error) {
