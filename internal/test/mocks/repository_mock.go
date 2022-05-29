@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	repository "github.com/Asymmetriq/shortener/internal/repository"
+	models "github.com/Asymmetriq/shortener/internal/models"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -50,10 +50,10 @@ func (mr *MockRepositoryMockRecorder) Close() *gomock.Call {
 }
 
 // GetAllURLs mocks base method.
-func (m *MockRepository) GetAllURLs(ctx context.Context, userID string) ([]repository.Data, error) {
+func (m *MockRepository) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAllURLs", ctx, userID)
-	ret0, _ := ret[0].([]repository.Data)
+	ret0, _ := ret[0].([]models.StorageEntry)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -93,17 +93,30 @@ func (mr *MockRepositoryMockRecorder) PingContext(ctx interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingContext", reflect.TypeOf((*MockRepository)(nil).PingContext), ctx)
 }
 
-// SetURL mocks base method.
-func (m *MockRepository) SetURL(ctx context.Context, url, userID, host string) (string, error) {
+// SetBatchURLs mocks base method.
+func (m *MockRepository) SetBatchURLs(ctx context.Context, entry []models.StorageEntry) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetURL", ctx, url, userID, host)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "SetBatchURLs", ctx, entry)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetBatchURLs indicates an expected call of SetBatchURLs.
+func (mr *MockRepositoryMockRecorder) SetBatchURLs(ctx, entry interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBatchURLs", reflect.TypeOf((*MockRepository)(nil).SetBatchURLs), ctx, entry)
+}
+
+// SetURL mocks base method.
+func (m *MockRepository) SetURL(ctx context.Context, entry models.StorageEntry) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetURL", ctx, entry)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // SetURL indicates an expected call of SetURL.
-func (mr *MockRepositoryMockRecorder) SetURL(ctx, url, userID, host interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) SetURL(ctx, entry interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetURL", reflect.TypeOf((*MockRepository)(nil).SetURL), ctx, url, userID, host)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetURL", reflect.TypeOf((*MockRepository)(nil).SetURL), ctx, entry)
 }

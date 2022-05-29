@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Asymmetriq/shortener/internal/cookie"
+	"github.com/Asymmetriq/shortener/internal/models"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -42,15 +43,16 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 	if u := s.Config.GetBaseURL(); len(u) != 0 {
 		host = u
 	}
-	res, err := s.Storage.SetURL(r.Context(), string(b), userID, host)
-	if err != nil {
+
+	entry := models.NewStorageEntry(string(b), host, userID)
+	if err = s.Storage.SetURL(r.Context(), entry); err != nil {
 		http.Error(w, "no request body", http.StatusBadRequest)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/text")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(res))
+	w.Write([]byte(entry.ShortURL))
 }
 
 func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +65,8 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	var result struct {
 		URL string `json:"url"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&result); err != nil {
+	err := json.NewDecoder(r.Body).Decode(&result)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -71,15 +74,20 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	if u := s.Config.GetBaseURL(); len(u) != 0 {
 		host = u
 	}
-	res, err := s.Storage.SetURL(r.Context(), result.URL, userID, host)
-	if err != nil {
+	entry := models.NewStorageEntry(result.URL, host, userID)
+	if err = s.Storage.SetURL(r.Context(), entry); err != nil {
+		http.Error(w, "no request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.Storage.SetURL(r.Context(), entry); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	resp, err := json.Marshal(struct {
 		Result string `json:"result"`
 	}{
-		Result: res,
+		Result: entry.ShortURL,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -91,13 +99,50 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
-	err := s.Storage.PingContext(r.Context())
+func (s *Service) batchHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(cookie.Name).(string)
+	if !ok {
+		http.Error(w, "no userID provided", http.StatusBadRequest)
+		return
+	}
+
+	var entries []models.StorageEntry
+	err := json.NewDecoder(r.Body).Decode(&entries)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	host := r.Host
+	if u := s.Config.GetBaseURL(); len(u) != 0 {
+		host = u
+	}
+
+	for i := range entries {
+		entries[i].UserID = userID
+		if err = entries[i].BuildShortURL(host); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	if err := s.Storage.SetBatchURLs(r.Context(), entries); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for i := range entries {
+		entries[i].ID = ""
+		entries[i].OriginalURL = ""
+		entries[i].UserID = ""
+	}
+
+	value, err := json.Marshal(entries)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(value)
 }
 
 func (s *Service) userURLsHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,4 +164,13 @@ func (s *Service) userURLsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+}
+
+func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
+	err := s.Storage.PingContext(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

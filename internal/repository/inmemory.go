@@ -5,28 +5,29 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Asymmetriq/shortener/internal/shorten"
+	"github.com/Asymmetriq/shortener/internal/models"
 )
 
 func newInMemoryRepository() *inMemoryRepository {
 	return &inMemoryRepository{
-		storage: make(map[string]Data),
+		storage: make(map[string]models.StorageEntry),
 	}
 }
 
 type inMemoryRepository struct {
-	storage map[string]Data
+	storage map[string]models.StorageEntry
 }
 
-func (imr *inMemoryRepository) SetURL(ctx context.Context, url, userID, host string) (string, error) {
-	id := shorten.Shorten(url)
-	shortURL := buildURL(host, id)
-	imr.storage[id] = Data{
-		OriginalURL: url,
-		ShortURL:    shortURL,
-		userID:      userID,
+func (imr *inMemoryRepository) SetURL(ctx context.Context, entry models.StorageEntry) error {
+	imr.storage[entry.ID] = entry
+	return nil
+}
+
+func (imr *inMemoryRepository) SetBatchURLs(ctx context.Context, entries []models.StorageEntry) error {
+	for _, entry := range entries {
+		imr.storage[entry.ID] = entry
 	}
-	return shortURL, nil
+	return nil
 }
 
 func (imr *inMemoryRepository) GetURL(ctx context.Context, id string) (string, error) {
@@ -36,11 +37,11 @@ func (imr *inMemoryRepository) GetURL(ctx context.Context, id string) (string, e
 	return "", fmt.Errorf("no original url found with shortcut %q", id)
 }
 
-func (imr *inMemoryRepository) GetAllURLs(ctx context.Context, userID string) ([]Data, error) {
-	data := make([]Data, 0)
-	for _, v := range imr.storage {
-		if v.userID == userID {
-			data = append(data, v)
+func (imr *inMemoryRepository) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
+	data := make([]models.StorageEntry, 0)
+	for _, entry := range imr.storage {
+		if entry.UserID == userID {
+			data = append(data, entry)
 		}
 	}
 	if len(data) == 0 {

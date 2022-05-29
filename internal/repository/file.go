@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Asymmetriq/shortener/internal/shorten"
+	"github.com/Asymmetriq/shortener/internal/models"
 )
 
 type dataJSON struct {
@@ -20,7 +20,7 @@ type dataJSON struct {
 type fileRepostitory struct {
 	file    *os.File
 	encoder *json.Encoder
-	storage map[string]Data
+	storage map[string]models.StorageEntry
 }
 
 func newFileRepository(filename, host string) *fileRepostitory {
@@ -40,37 +40,32 @@ func newFileRepository(filename, host string) *fileRepostitory {
 	}
 }
 
-func (fr *fileRepostitory) SetURL(ctx context.Context, url, userID, host string) (string, error) {
-	id := shorten.Shorten(url)
-	shortURL := buildURL(host, id)
-
-	if _, ok := fr.storage[id]; !ok {
-		fr.encoder.Encode(dataJSON{
-			OriginalURL: url,
-			ID:          id,
-			UserID:      userID,
-		})
+func (fr *fileRepostitory) SetURL(ctx context.Context, entry models.StorageEntry) error {
+	if _, ok := fr.storage[entry.ID]; !ok {
+		fr.encoder.Encode(entry)
 	}
-	fr.storage[id] = Data{
-		OriginalURL: url,
-		ShortURL:    shortURL,
-		userID:      userID,
-	}
+	fr.storage[entry.ID] = entry
+	return nil
+}
 
-	return shortURL, nil
+func (fr *fileRepostitory) SetBatchURLs(ctx context.Context, entries []models.StorageEntry) error {
+	for _, entry := range entries {
+		fr.storage[entry.ID] = entry
+	}
+	return nil
 }
 
 func (fr *fileRepostitory) GetURL(ctx context.Context, id string) (string, error) {
-	if ogURL, ok := fr.storage[id]; ok {
-		return ogURL.OriginalURL, nil
+	if entry, ok := fr.storage[id]; ok {
+		return entry.OriginalURL, nil
 	}
 	return "", fmt.Errorf("no original url found with shortcut %q", id)
 }
 
-func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]Data, error) {
-	data := make([]Data, 0)
+func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
+	data := make([]models.StorageEntry, 0)
 	for _, v := range fr.storage {
-		if v.userID == userID {
+		if v.UserID == userID {
 			data = append(data, v)
 		}
 	}
@@ -85,27 +80,23 @@ func (fr *fileRepostitory) PingContext(ctx context.Context) error {
 	return nil
 }
 
-func restoreData(file *os.File, host string) (map[string]Data, error) {
+func restoreData(file *os.File, host string) (map[string]models.StorageEntry, error) {
 	stats, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
+	restored := make(map[string]models.StorageEntry)
 	if stats.Size() == 0 {
-		return make(map[string]Data), nil
+		return restored, nil
 	}
 
-	restored := make(map[string]Data)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		v := dataJSON{}
-		if err = json.Unmarshal(scanner.Bytes(), &v); err != nil {
+		entry := models.StorageEntry{}
+		if err = json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 			return nil, err
 		}
-		restored[v.ID] = Data{
-			OriginalURL: v.OriginalURL,
-			ShortURL:    buildURL(host, v.ID),
-			userID:      v.UserID,
-		}
+		restored[entry.ID] = entry
 	}
 
 	if err := scanner.Err(); err != nil {
