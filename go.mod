@@ -23,6 +23,7 @@ require (
 	github.com/jackc/pgtype v1.10.0 // indirect
 	github.com/jackc/pgx v3.6.2+incompatible // indirect
 	github.com/jackc/pgx/v4 v4.15.0 // indirect
+	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pressly/goose/v3 v3.5.3 // indirect

@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/Asymmetriq/shortener/internal/config"
 	"github.com/Asymmetriq/shortener/internal/models"
+	"github.com/jmoiron/sqlx"
 )
 
 type Repository interface {
@@ -17,7 +17,7 @@ type Repository interface {
 	PingContext(ctx context.Context) error
 }
 
-func NewRepository(cfg config.Config, db *sql.DB) Repository {
+func NewRepository(cfg config.Config, db *sqlx.DB) Repository {
 	if db != nil {
 		return newDBRepository(db)
 	}

@@ -9,10 +9,10 @@ import (
 )
 
 type StorageEntry struct {
-	ID            string `json:"id,omitempty"`
-	UserID        string `json:"user_id,omitempty"`
-	ShortURL      string `json:"short_url"`
-	OriginalURL   string `json:"original_url,omitempty"`
+	ID            string `json:"id,omitempty" db:"id"`
+	UserID        string `json:"user_id,omitempty" db:"user_id"`
+	ShortURL      string `json:"short_url" db:"short_url"`
+	OriginalURL   string `json:"original_url,omitempty" db:"original_url"`
 	CorrelationID string `json:"correlation_id,omitempty"`
 }
 
