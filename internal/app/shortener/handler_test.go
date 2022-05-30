@@ -67,7 +67,7 @@ func TestPositive_getHandler(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
-			checkResults(t, tt, response.StatusCode, ts.URL+respBody, response.Header.Get("Content-Type"))
+			checkResults(t, tt, response.StatusCode, ts.URL+respBody, response.Header.Get("Content-Type"), "")
 			response.Body.Close()
 		})
 	}
@@ -99,15 +99,13 @@ func TestNegative_getHandler(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
-			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"), "")
 			response.Body.Close()
 		})
 	}
 }
 
 func TestPositive_postHandler(t *testing.T) {
-	// TODO
-	t.Skip()
 	tests := []testCase{
 		{
 			name: "test positive 1",
@@ -119,7 +117,7 @@ func TestPositive_postHandler(t *testing.T) {
 			want: want{
 				contentType: "application/text",
 				statusCode:  http.StatusCreated,
-				value:       "short-url-mock",
+				value:       "Cc4PMy5iGtEuaJH3KtPwePaTGHVqNMSKBtUrWhyTjo4t",
 			},
 		},
 		{
@@ -132,7 +130,7 @@ func TestPositive_postHandler(t *testing.T) {
 			want: want{
 				contentType: "application/text",
 				statusCode:  http.StatusCreated,
-				value:       "short-url-mock",
+				value:       "4D71kVApBvoxqSyojJxysa1c67g2DWUfJuR4oMPRSmQy",
 			},
 		},
 	}
@@ -146,7 +144,7 @@ func TestPositive_postHandler(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
-			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"), ts.URL)
 			response.Body.Close()
 		})
 	}
@@ -179,7 +177,7 @@ func TestNegative_postHandler(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
-			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"), "")
 			response.Body.Close()
 		})
 	}
@@ -233,7 +231,7 @@ func TestPositive_jsonHandler(t *testing.T) {
 		tt.want.value = string(m)
 		t.Run(tt.name, func(t *testing.T) {
 			response, respBody := testRequest(t, ts.URL, tt.params.method, tt.params.path, tt.params.value)
-			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"))
+			checkResults(t, tt, response.StatusCode, respBody, response.Header.Get("Content-Type"), ts.URL)
 			response.Body.Close()
 		})
 	}
@@ -259,11 +257,15 @@ func testRequest(t *testing.T, serverURL string, method, path string, value io.R
 	return resp, string(respBody)
 }
 
-func checkResults(t *testing.T, tt testCase, code int, value, contentType string) {
+func checkResults(t *testing.T, tt testCase, code int, value, contentType, host string) {
 	require.Equal(t, tt.want.statusCode, code, "status codes don't match")
 	require.Equal(t, tt.want.contentType, contentType)
 	if tt.want.value != "" {
-		require.Equal(t, tt.want.value, value, "shortened urls don't match")
+		fullURL := tt.want.value
+		if host != "" {
+			fullURL = host + "/" + tt.want.value
+		}
+		require.Equal(t, fullURL, value, "shortened urls don't match")
 	}
 
 }

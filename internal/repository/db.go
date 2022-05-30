@@ -22,9 +22,15 @@ func (dbr *dbRepository) SetURL(ctx context.Context, entry models.StorageEntry) 
 	stmnt := `
 	INSERT INTO urls(id, short_url, original_url, user_id) 
 	VALUES (:id, :short_url, :original_url, :user_id) 
-	ON CONFLICT (id) DO UPDATE SET id=:id`
+	ON CONFLICT (original_url) DO NOTHING`
 
-	_, err := dbr.DB.NamedExecContext(ctx, stmnt, &entry)
+	res, err := dbr.DB.NamedExecContext(ctx, stmnt, &entry)
+	if err != nil {
+		return err
+	}
+	if n, e := res.RowsAffected(); e == nil && n == 0 {
+		return models.ErrAlreadyExists
+	}
 	return err
 }
 
@@ -32,13 +38,18 @@ func (dbr *dbRepository) SetBatchURLs(ctx context.Context, entries []models.Stor
 	if len(entries) == 0 {
 		return nil
 	}
-	// tempID := entries[0].UserID
 	stmnt := `
 	INSERT INTO urls(id, short_url, original_url, user_id) 
 	VALUES (:id, :short_url, :original_url, :user_id) 
 	ON CONFLICT (id) DO NOTHING`
 
-	_, err := dbr.DB.NamedExecContext(ctx, stmnt, entries)
+	res, err := dbr.DB.NamedExecContext(ctx, stmnt, entries)
+	if err != nil {
+		return err
+	}
+	if n, e := res.RowsAffected(); e == nil && n == 0 {
+		return models.ErrAlreadyExists
+	}
 	return err
 }
 

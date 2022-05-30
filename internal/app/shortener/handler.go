@@ -45,13 +45,14 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entry := models.NewStorageEntry(string(b), host, userID)
-	if err = s.Storage.SetURL(r.Context(), entry); err != nil {
-		http.Error(w, "no request body", http.StatusBadRequest)
+	err = s.Storage.SetURL(r.Context(), entry)
+	code := models.ParseStorageError(err)
+	if code == http.StatusBadRequest {
+		http.Error(w, err.Error(), code)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/text")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(code)
 	w.Write([]byte(entry.ShortURL))
 }
 
@@ -74,14 +75,12 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 	if u := s.Config.GetBaseURL(); len(u) != 0 {
 		host = u
 	}
-	entry := models.NewStorageEntry(result.URL, host, userID)
-	if err = s.Storage.SetURL(r.Context(), entry); err != nil {
-		http.Error(w, "no request body", http.StatusBadRequest)
-		return
-	}
 
-	if err := s.Storage.SetURL(r.Context(), entry); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	entry := models.NewStorageEntry(result.URL, host, userID)
+	err = s.Storage.SetURL(r.Context(), entry)
+	code := models.ParseStorageError(err)
+	if code == http.StatusBadRequest {
+		http.Error(w, err.Error(), code)
 		return
 	}
 	resp, err := json.Marshal(struct {
@@ -93,9 +92,8 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(code)
 	w.Write(resp)
 }
 
@@ -124,8 +122,11 @@ func (s *Service) batchHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := s.Storage.SetBatchURLs(r.Context(), entries); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+	err = s.Storage.SetBatchURLs(r.Context(), entries)
+	code := models.ParseStorageError(err)
+	if code == http.StatusBadRequest {
+		http.Error(w, err.Error(), code)
 		return
 	}
 	for i := range entries {
@@ -141,7 +142,7 @@ func (s *Service) batchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(code)
 	w.Write(value)
 }
 
