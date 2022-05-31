@@ -2,31 +2,33 @@ package repository
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
-	"github.com/Asymmetriq/shortener/internal/shorten"
+	"github.com/Asymmetriq/shortener/internal/models"
 )
 
 type dataJSON struct {
-	OriginalURL string
-	ShortURL    string
+	OriginalURL string `json:"original_url"`
+	ID          string `json:"id"`
+	UserID      string `json:"user_id"`
 }
 
 type fileRepostitory struct {
 	file    *os.File
 	encoder *json.Encoder
-	storage map[string]string
+	storage map[string]models.StorageEntry
 }
 
-func newFileRepository(filename string) *fileRepostitory {
+func newFileRepository(filename, host string) *fileRepostitory {
 	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		log.Fatalf("create file repo: %v", err)
 	}
-	data, err := restoreData(f)
+	data, err := restoreData(f, host)
 	if err != nil {
 		log.Fatalf("corrupted data %v", err)
 	}
@@ -38,47 +40,63 @@ func newFileRepository(filename string) *fileRepostitory {
 	}
 }
 
-func (fr *fileRepostitory) Set(url string) string {
-	shortURL := shorten.Shorten(url)
-	if _, ok := fr.storage[shortURL]; !ok {
-		fr.encoder.Encode(dataJSON{
-			OriginalURL: url,
-			ShortURL:    shortURL,
-		})
+func (fr *fileRepostitory) SetURL(ctx context.Context, entry models.StorageEntry) error {
+	if _, ok := fr.storage[entry.ID]; !ok {
+		fr.encoder.Encode(entry)
 	}
-	fr.storage[shortURL] = url
-
-	return shortURL
+	fr.storage[entry.ID] = entry
+	return nil
 }
 
-func (fr *fileRepostitory) Get(id string) (string, error) {
-	if ogURL, ok := fr.storage[id]; ok {
-		return ogURL, nil
+func (fr *fileRepostitory) SetBatchURLs(ctx context.Context, entries []models.StorageEntry) error {
+	for _, entry := range entries {
+		fr.storage[entry.ID] = entry
+	}
+	return nil
+}
+
+func (fr *fileRepostitory) GetURL(ctx context.Context, id string) (string, error) {
+	if entry, ok := fr.storage[id]; ok {
+		return entry.OriginalURL, nil
 	}
 	return "", fmt.Errorf("no original url found with shortcut %q", id)
+}
+
+func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
+	data := make([]models.StorageEntry, 0)
+	for _, v := range fr.storage {
+		if v.UserID == userID {
+			data = append(data, v)
+		}
+	}
+	return data, nil
 }
 
 func (fr *fileRepostitory) Close() error {
 	return fr.file.Close()
 }
 
-func restoreData(file *os.File) (map[string]string, error) {
+func (fr *fileRepostitory) PingContext(ctx context.Context) error {
+	return nil
+}
+
+func restoreData(file *os.File, host string) (map[string]models.StorageEntry, error) {
 	stats, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
+	restored := make(map[string]models.StorageEntry)
 	if stats.Size() == 0 {
-		return make(map[string]string), nil
+		return restored, nil
 	}
 
-	restored := make(map[string]string)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		v := dataJSON{}
-		if err = json.Unmarshal(scanner.Bytes(), &v); err != nil {
+		entry := models.StorageEntry{}
+		if err = json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 			return nil, err
 		}
-		restored[v.ShortURL] = v.OriginalURL
+		restored[entry.ID] = entry
 	}
 
 	if err := scanner.Err(); err != nil {

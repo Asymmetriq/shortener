@@ -2,12 +2,12 @@ package shortener
 
 import (
 	"github.com/Asymmetriq/shortener/internal/config"
-	r "github.com/Asymmetriq/shortener/internal/repository"
+	repo "github.com/Asymmetriq/shortener/internal/repository"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewShortener(repo r.Repository, cfg config.Config) *Service {
+func NewShortener(repo repo.Repository, cfg config.Config) *Service {
 	s := &Service{
 		Mux:     chi.NewMux(),
 		Storage: repo,
@@ -18,14 +18,25 @@ func NewShortener(repo r.Repository, cfg config.Config) *Service {
 		middleware.Recoverer,
 		middleware.RealIP,
 		middleware.Logger,
-		gzipHandle,
+
+		gzipMiddleware,
+		cookieMiddleware,
 	)
 	s.Route("/", func(r chi.Router) {
 		s.Post("/", s.postHandler)
 		s.Get("/{id}", s.getHandler)
 
+		s.Get("/ping", s.pingHandler)
+
 		r.Route("/api", func(r chi.Router) {
-			r.Post("/shorten", s.jsonHandler)
+			r.Route("/shorten", func(r chi.Router) {
+				r.Post("/", s.jsonHandler)
+				r.Post("/batch", s.batchHandler)
+			})
+
+			r.Route("/user", func(r chi.Router) {
+				r.Get("/urls", s.userURLsHandler)
+			})
 		})
 	})
 
@@ -34,6 +45,6 @@ func NewShortener(repo r.Repository, cfg config.Config) *Service {
 
 type Service struct {
 	*chi.Mux
-	Storage r.Repository
+	Storage repo.Repository
 	Config  config.Config
 }
