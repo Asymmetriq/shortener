@@ -31,10 +31,14 @@ func (imr *inMemoryRepository) SetBatchURLs(ctx context.Context, entries []model
 }
 
 func (imr *inMemoryRepository) GetURL(ctx context.Context, id string) (string, error) {
-	if ogURL, ok := imr.storage[id]; ok {
-		return ogURL.OriginalURL, nil
+	item, ok := imr.storage[id]
+	if !ok {
+		return "", fmt.Errorf("no original url found with shortcut %q", id)
 	}
-	return "", fmt.Errorf("no original url found with shortcut %q", id)
+	if item.Deleted {
+		return "", models.ErrDeleted
+	}
+	return item.OriginalURL, nil
 }
 
 func (imr *inMemoryRepository) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
@@ -48,6 +52,15 @@ func (imr *inMemoryRepository) GetAllURLs(ctx context.Context, userID string) ([
 		return nil, errors.New("no urls for user")
 	}
 	return data, nil
+}
+
+func (imr *inMemoryRepository) BatchDelete(ctx context.Context, req models.DeleteRequest) {
+	for _, v := range req.IDs {
+		if item := imr.storage[v]; item.UserID == req.UserID {
+			item.Deleted = true
+			imr.storage[v] = item
+		}
+	}
 }
 
 func (imr *inMemoryRepository) Close() error {

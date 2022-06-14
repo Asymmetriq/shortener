@@ -35,6 +35,18 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// BatchDelete mocks base method.
+func (m *MockRepository) BatchDelete(ctx context.Context, req models.DeleteRequest) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "BatchDelete", ctx, req)
+}
+
+// BatchDelete indicates an expected call of BatchDelete.
+func (mr *MockRepositoryMockRecorder) BatchDelete(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchDelete", reflect.TypeOf((*MockRepository)(nil).BatchDelete), ctx, req)
+}
+
 // Close mocks base method.
 func (m *MockRepository) Close() error {
 	m.ctrl.T.Helper()

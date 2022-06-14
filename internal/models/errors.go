@@ -5,9 +5,12 @@ import (
 	"net/http"
 )
 
-var ErrAlreadyExists = errors.New("such url is already shortened")
+var (
+	ErrAlreadyExists = errors.New("such url is already shortened")
+	ErrDeleted       = errors.New("short url deleted")
+)
 
-func ParseStorageError(err error) int {
+func ParsePostError(err error) int {
 	switch {
 	case err == nil:
 		return http.StatusCreated
@@ -17,4 +20,15 @@ func ParseStorageError(err error) int {
 		return http.StatusBadRequest
 	}
 
+}
+
+func ParseGetError(err error) int {
+	switch {
+	case err == nil:
+		return http.StatusTemporaryRedirect
+	case errors.Is(err, ErrDeleted):
+		return http.StatusGone
+	default:
+		return http.StatusBadRequest
+	}
 }
