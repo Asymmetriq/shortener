@@ -191,7 +191,7 @@ func (s *Service) asyncDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Storage.BatchDelete(r.Context(), models.DeleteRequest{UserID: userID, IDs: ids})
+	s.Storage.BatchDelete(models.DeleteRequest{UserID: userID, IDs: ids})
 
 	w.WriteHeader(http.StatusAccepted)
 }

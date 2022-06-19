@@ -70,7 +70,7 @@ func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]mod
 	return data, nil
 }
 
-func (fr *fileRepostitory) BatchDelete(ctx context.Context, req models.DeleteRequest) {
+func (fr *fileRepostitory) BatchDelete(req models.DeleteRequest) {
 	for _, v := range req.IDs {
 		if item := fr.storage[v]; item.UserID == req.UserID {
 			item.Deleted = true

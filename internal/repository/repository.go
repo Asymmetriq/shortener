@@ -13,7 +13,7 @@ type Repository interface {
 	SetBatchURLs(ctx context.Context, entry []models.StorageEntry) error
 	GetURL(ctx context.Context, id string) (string, error)
 	GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error)
-	BatchDelete(ctx context.Context, req models.DeleteRequest)
+	BatchDelete(req models.DeleteRequest)
 	Close() error
 	PingContext(ctx context.Context) error
 }

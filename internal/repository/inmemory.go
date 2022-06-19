@@ -54,7 +54,7 @@ func (imr *inMemoryRepository) GetAllURLs(ctx context.Context, userID string) ([
 	return data, nil
 }
 
-func (imr *inMemoryRepository) BatchDelete(ctx context.Context, req models.DeleteRequest) {
+func (imr *inMemoryRepository) BatchDelete(req models.DeleteRequest) {
 	for _, v := range req.IDs {
 		if item := imr.storage[v]; item.UserID == req.UserID {
 			item.Deleted = true
