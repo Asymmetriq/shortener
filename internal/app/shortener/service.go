@@ -36,6 +36,7 @@ func NewShortener(repo repo.Repository, cfg config.Config) *Service {
 
 			r.Route("/user", func(r chi.Router) {
 				r.Get("/urls", s.userURLsHandler)
+				r.Delete("/urls", s.asyncDeleteHandler)
 			})
 		})
 	})

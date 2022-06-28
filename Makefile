@@ -14,7 +14,7 @@ db-create:
 	psql -U postgres -c "create database $(DATABASE_NAME)"
 
 db-up:
-	goose -dir ./internal/config/migrations postgres "${DATABASE_DSN}" up
+	goose -dir ./internal/database/migrations postgres "${DATABASE_DSN}" up
 
 jet:
 	jet -dsn ${DATABASE_DSN} -path=./internal/generated

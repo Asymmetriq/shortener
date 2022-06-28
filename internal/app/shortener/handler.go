@@ -14,12 +14,13 @@ func (s *Service) getHandler(w http.ResponseWriter, r *http.Request) {
 	shortID := chi.URLParam(r, "id")
 
 	ogURL, err := s.Storage.GetURL(r.Context(), shortID)
-	if err != nil {
+	code := models.ParseGetError(err)
+	if code == http.StatusBadRequest {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	http.Redirect(w, r, ogURL, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, ogURL, code)
 }
 
 func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +47,7 @@ func (s *Service) postHandler(w http.ResponseWriter, r *http.Request) {
 
 	entry := models.NewStorageEntry(string(b), host, userID)
 	err = s.Storage.SetURL(r.Context(), entry)
-	code := models.ParseStorageError(err)
+	code := models.ParsePostError(err)
 	if code == http.StatusBadRequest {
 		http.Error(w, err.Error(), code)
 		return
@@ -78,7 +79,7 @@ func (s *Service) jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 	entry := models.NewStorageEntry(result.URL, host, userID)
 	err = s.Storage.SetURL(r.Context(), entry)
-	code := models.ParseStorageError(err)
+	code := models.ParsePostError(err)
 	if code == http.StatusBadRequest {
 		http.Error(w, err.Error(), code)
 		return
@@ -124,7 +125,7 @@ func (s *Service) batchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = s.Storage.SetBatchURLs(r.Context(), entries)
-	code := models.ParseStorageError(err)
+	code := models.ParsePostError(err)
 	if code == http.StatusBadRequest {
 		http.Error(w, err.Error(), code)
 		return
@@ -174,4 +175,23 @@ func (s *Service) pingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Service) asyncDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(cookie.Name).(string)
+	if !ok {
+		http.Error(w, "no userID provided", http.StatusBadRequest)
+		return
+	}
+
+	ids := []string{}
+	err := json.NewDecoder(r.Body).Decode(&ids)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s.Storage.BatchDelete(models.DeleteRequest{UserID: userID, IDs: ids})
+
+	w.WriteHeader(http.StatusAccepted)
 }
