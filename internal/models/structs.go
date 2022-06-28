@@ -14,6 +14,7 @@ type StorageEntry struct {
 	ShortURL      string `json:"short_url" db:"short_url"`
 	OriginalURL   string `json:"original_url,omitempty" db:"original_url"`
 	CorrelationID string `json:"correlation_id,omitempty"`
+	Deleted       bool   `json:"-" db:"deleted"`
 }
 
 func NewStorageEntry(originalURL, host, userID string) StorageEntry {
@@ -43,4 +44,9 @@ func buildURL(host, id string) string {
 		return fmt.Sprintf("%s/%s", host, id)
 	}
 	return fmt.Sprintf("http://%s/%s", host, id)
+}
+
+type DeleteRequest struct {
+	UserID string
+	IDs    []string
 }

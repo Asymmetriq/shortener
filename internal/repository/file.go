@@ -11,12 +11,6 @@ import (
 	"github.com/Asymmetriq/shortener/internal/models"
 )
 
-type dataJSON struct {
-	OriginalURL string `json:"original_url"`
-	ID          string `json:"id"`
-	UserID      string `json:"user_id"`
-}
-
 type fileRepostitory struct {
 	file    *os.File
 	encoder *json.Encoder
@@ -56,10 +50,14 @@ func (fr *fileRepostitory) SetBatchURLs(ctx context.Context, entries []models.St
 }
 
 func (fr *fileRepostitory) GetURL(ctx context.Context, id string) (string, error) {
-	if entry, ok := fr.storage[id]; ok {
-		return entry.OriginalURL, nil
+	item, ok := fr.storage[id]
+	if !ok {
+		return "", fmt.Errorf("no original url found with shortcut %q", id)
 	}
-	return "", fmt.Errorf("no original url found with shortcut %q", id)
+	if item.Deleted {
+		return "", models.ErrDeleted
+	}
+	return item.OriginalURL, nil
 }
 
 func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]models.StorageEntry, error) {
@@ -70,6 +68,15 @@ func (fr *fileRepostitory) GetAllURLs(ctx context.Context, userID string) ([]mod
 		}
 	}
 	return data, nil
+}
+
+func (fr *fileRepostitory) BatchDelete(req models.DeleteRequest) {
+	for _, v := range req.IDs {
+		if item := fr.storage[v]; item.UserID == req.UserID {
+			item.Deleted = true
+			fr.storage[v] = item
+		}
+	}
 }
 
 func (fr *fileRepostitory) Close() error {
